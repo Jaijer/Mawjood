@@ -1,6 +1,9 @@
+// lib/screens/home_screen.dart
+
 import 'package:flutter/material.dart';
 import '../screens/items/add_item_screen.dart';
 import '../models/item_model.dart';
+import '../screens/items/items_list.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -40,10 +43,10 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
       body: TabBarView(
         controller: _tabController,
         children: [
-          // Lost Items Tab - This will be implemented by Member 3
-          Center(child: Text('Lost Items List - Coming Soon')),
-          // Found Items Tab - This will be implemented by Member 3
-          Center(child: Text('Found Items List - Coming Soon')),
+          // Lost Items Tab
+          ItemsList(itemType: ItemType.lost),
+          // Found Items Tab
+          ItemsList(itemType: ItemType.found),
         ],
       ),
       floatingActionButton: FloatingActionButton(

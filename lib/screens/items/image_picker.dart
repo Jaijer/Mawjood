@@ -1,48 +1,22 @@
-import 'package:flutter/foundation.dart'; // For kIsWeb
 import 'package:flutter/material.dart';
-import 'dart:io'; // Only used on non-web platforms
 import 'package:image_picker/image_picker.dart';
+import 'dart:typed_data';
 
-class CustomImagePicker extends StatefulWidget {
+class CustomImagePicker extends StatelessWidget {
+  final List<XFile> imageFiles;
   final List<String> images;
-  final Function(String) onImageSelected;
+  final Function(XFile)? onFileSelected;
+  final Function(String)? onImageSelected;
   final Function(int) onImageRemoved;
 
   const CustomImagePicker({
     super.key,
-    required this.images,
-    required this.onImageSelected,
+    this.imageFiles = const [],
+    this.images = const [],
+    this.onFileSelected,
+    this.onImageSelected,
     required this.onImageRemoved,
   });
-
-  @override
-  State<CustomImagePicker> createState() => _CustomImagePickerState();
-}
-
-class _CustomImagePickerState extends State<CustomImagePicker> {
-  final ImagePicker _picker = ImagePicker();
-
-  Future<void> _takePicture() async {
-    try {
-      final XFile? photo = await _picker.pickImage(source: ImageSource.camera);
-      if (photo != null) {
-        widget.onImageSelected(photo.path);
-      }
-    } catch (e) {
-      print('Error taking picture: $e');
-    }
-  }
-
-  Future<void> _pickImage() async {
-    try {
-      final XFile? image = await _picker.pickImage(source: ImageSource.gallery);
-      if (image != null) {
-        widget.onImageSelected(image.path);
-      }
-    } catch (e) {
-      print('Error picking image: $e');
-    }
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -50,21 +24,16 @@ class _CustomImagePickerState extends State<CustomImagePicker> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const Text(
-          'Images',
-          style: TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.bold,
-          ),
+          'Images*',
+          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
         ),
         const SizedBox(height: 8),
         const Text(
-          'Add at least one image of the item',
+          'Add at least one clear photo of the item',
           style: TextStyle(color: Colors.grey),
         ),
         const SizedBox(height: 12),
-
-        // Image grid
-        if (widget.images.isNotEmpty)
+        if (imageFiles.isNotEmpty || images.isNotEmpty)
           GridView.builder(
             shrinkWrap: true,
             physics: const NeverScrollableScrollPhysics(),
@@ -73,81 +42,187 @@ class _CustomImagePickerState extends State<CustomImagePicker> {
               crossAxisSpacing: 8,
               mainAxisSpacing: 8,
             ),
-            itemCount: widget.images.length,
+            itemCount: imageFiles.length + images.length,
             itemBuilder: (context, index) {
-              final imagePath = widget.images[index];
-              final isNetwork = imagePath.startsWith('http') || kIsWeb;
-
-              return Stack(
-                children: [
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(8),
-                    child: isNetwork
-                        ? Image.network(
-                      imagePath,
-                      width: double.infinity,
-                      height: 100,
-                      fit: BoxFit.cover,
-                    )
-                        : Image.file(
-                      File(imagePath),
-                      width: double.infinity,
-                      height: 100,
-                      fit: BoxFit.cover,
-                    ),
-                  ),
-                  Positioned(
-                    top: 0,
-                    right: 0,
-                    child: GestureDetector(
-                      onTap: () => widget.onImageRemoved(index),
-                      child: Container(
-                        padding: const EdgeInsets.all(4),
-                        decoration: const BoxDecoration(
-                          color: Colors.red,
-                          shape: BoxShape.circle,
-                        ),
-                        child: const Icon(
-                          Icons.close,
-                          size: 16,
-                          color: Colors.white,
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-              );
+              if (index < imageFiles.length) {
+                return _FilePreview(
+                  imageFile: imageFiles[index],
+                  onRemove: () => onImageRemoved(index),
+                );
+              } else {
+                final imageIndex = index - imageFiles.length;
+                return _UrlPreview(
+                  imageUrl: images[imageIndex],
+                  onRemove: () => onImageRemoved(index),
+                );
+              }
             },
           ),
-
         const SizedBox(height: 16),
-
-        // Buttons to add images
         Row(
-          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
           children: [
             Expanded(
-              child: ElevatedButton.icon(
-                onPressed: _takePicture,
+              child: OutlinedButton.icon(
+                onPressed: () async {
+                  final image = await ImagePicker().pickImage(
+                    source: ImageSource.camera,
+                    maxWidth: 1000,
+                    imageQuality: 80,
+                  );
+                  if (image != null) {
+                    if (onFileSelected != null) {
+                      onFileSelected!(image);
+                    } else if (onImageSelected != null) {
+                      // Convert to URL or handle differently if needed
+                      // This is a placeholder for demonstration
+                      onImageSelected!('file://${image.path}');
+                    }
+                  }
+                },
                 icon: const Icon(Icons.camera_alt),
                 label: const Text('Camera'),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Theme.of(context).colorScheme.outline,
-                ),
               ),
             ),
             const SizedBox(width: 16),
             Expanded(
-              child: ElevatedButton.icon(
-                onPressed: _pickImage,
+              child: OutlinedButton.icon(
+                onPressed: () async {
+                  final image = await ImagePicker().pickImage(
+                    source: ImageSource.gallery,
+                    maxWidth: 1000,
+                    imageQuality: 80,
+                  );
+                  if (image != null) {
+                    if (onFileSelected != null) {
+                      onFileSelected!(image);
+                    } else if (onImageSelected != null) {
+                      // Convert to URL or handle differently if needed
+                      // This is a placeholder for demonstration
+                      onImageSelected!('file://${image.path}');
+                    }
+                  }
+                },
                 icon: const Icon(Icons.photo_library),
                 label: const Text('Gallery'),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Theme.of(context).colorScheme.outline,
-                ),
               ),
             ),
           ],
+        ),
+      ],
+    );
+  }
+}
+
+class _FilePreview extends StatelessWidget {
+  final XFile imageFile;
+  final VoidCallback onRemove;
+
+  const _FilePreview({
+    required this.imageFile,
+    required this.onRemove,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Stack(
+      children: [
+        FutureBuilder<Uint8List>(
+          future: imageFile.readAsBytes(),
+          builder: (context, snapshot) {
+            if (snapshot.hasData) {
+              return ClipRRect(
+                borderRadius: BorderRadius.circular(8),
+                child: Image.memory(
+                  snapshot.data!,
+                  fit: BoxFit.cover,
+                ),
+              );
+            }
+            return const Center(child: CircularProgressIndicator());
+          },
+        ),
+        Positioned(
+          top: 4,
+          right: 4,
+          child: GestureDetector(
+            onTap: onRemove,
+            child: Container(
+              padding: const EdgeInsets.all(4),
+              decoration: BoxDecoration(
+                color: Colors.red,
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: const Icon(
+                Icons.close,
+                size: 16,
+                color: Colors.white,
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _UrlPreview extends StatelessWidget {
+  final String imageUrl;
+  final VoidCallback onRemove;
+
+  const _UrlPreview({
+    required this.imageUrl,
+    required this.onRemove,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Stack(
+      children: [
+        ClipRRect(
+          borderRadius: BorderRadius.circular(8),
+          child: Image.network(
+            imageUrl,
+            fit: BoxFit.cover,
+            loadingBuilder: (context, child, loadingProgress) {
+              if (loadingProgress == null) return child;
+              return Center(
+                child: CircularProgressIndicator(
+                  value: loadingProgress.expectedTotalBytes != null
+                      ? loadingProgress.cumulativeBytesLoaded /
+                      loadingProgress.expectedTotalBytes!
+                      : null,
+                ),
+              );
+            },
+            errorBuilder: (context, error, stackTrace) {
+              return Container(
+                color: Colors.grey[300],
+                child: const Icon(
+                  Icons.broken_image,
+                  color: Colors.red,
+                ),
+              );
+            },
+          ),
+        ),
+        Positioned(
+          top: 4,
+          right: 4,
+          child: GestureDetector(
+            onTap: onRemove,
+            child: Container(
+              padding: const EdgeInsets.all(4),
+              decoration: BoxDecoration(
+                color: Colors.red,
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: const Icon(
+                Icons.close,
+                size: 16,
+                color: Colors.white,
+              ),
+            ),
+          ),
         ),
       ],
     );

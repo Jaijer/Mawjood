@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "525840465634",
+    "project_id": "mawjood-85dea",
+    "storage_bucket": "mawjood-85dea.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:525840465634:android:0664612b496dafc14ce8bb",
+        "android_client_info": {
+          "package_name": "com.example.mawjood"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBtOKx_0OF0JLLnreTrx8T4HaxwkRzWuL4"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

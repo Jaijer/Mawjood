@@ -1,9 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:mawjood/screens/landing_page/landing_page.dart';
 import 'config/theme.dart';
-import 'screens/home_screen.dart';
+import 'config/firebase_config.dart';  // Import the new firebase config
 
-void main() {
+void main() async {
+  // Ensure Flutter is initialized
+  WidgetsFlutterBinding.ensureInitialized();
+
+  // Initialize Firebase
+  await FirebaseConfig.initializeFirebase();
+
+  // Run the app
   runApp(const MyApp());
 }
 

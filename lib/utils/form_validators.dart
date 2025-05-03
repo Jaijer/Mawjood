@@ -1,5 +1,7 @@
+// lib/utils/form_validators.dart
+
 class FormValidators {
-  // Title validator
+  // Validate title
   static String? validateTitle(String? value) {
     if (value == null || value.isEmpty) {
       return 'Please enter a title';
@@ -8,12 +10,12 @@ class FormValidators {
       return 'Title must be at least 3 characters';
     }
     if (value.length > 50) {
-      return 'Title must be less than 50 characters';
+      return 'Title cannot exceed 50 characters';
     }
     return null;
   }
 
-  // Description validator
+  // Validate description
   static String? validateDescription(String? value) {
     if (value == null || value.isEmpty) {
       return 'Please enter a description';
@@ -22,12 +24,12 @@ class FormValidators {
       return 'Description must be at least 10 characters';
     }
     if (value.length > 500) {
-      return 'Description must be less than 500 characters';
+      return 'Description cannot exceed 500 characters';
     }
     return null;
   }
 
-  // Category validator
+  // Validate category
   static String? validateCategory(String? value) {
     if (value == null || value.isEmpty) {
       return 'Please select a category';
@@ -35,25 +37,43 @@ class FormValidators {
     return null;
   }
 
-  // Location validator
+  // Validate location
   static String? validateLocation(String? value) {
     if (value == null || value.isEmpty) {
       return 'Please enter a location';
     }
-    return null;
-  }
-
-  // Contact info validator
-  static String? validateContactInfo(String? value) {
-    if (value == null || value.isEmpty) {
-      return 'Please enter contact information';
+    if (value.length < 3) {
+      return 'Location must be at least 3 characters';
+    }
+    if (value.length > 100) {
+      return 'Location cannot exceed 100 characters';
     }
     return null;
   }
 
-  // Image validator
-  static String? validateImages(List<String>? value) {
+  // Validate contact info
+  static String? validateContactInfo(String? value) {
     if (value == null || value.isEmpty) {
+      return 'Please enter contact information';
+    }
+
+    // Check if it's a valid email
+    bool isEmail = RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(value);
+
+    // Check if it's a valid phone number (simple check)
+    bool isPhone = RegExp(r'^\+?[0-9]{8,15}$').hasMatch(value);
+
+    // If contact info is not a valid email or phone, suggest formatting
+    if (!isEmail && !isPhone && value.length < 8) {
+      return 'Please provide a valid email or phone number';
+    }
+
+    return null;
+  }
+
+  // Validate images
+  static String? validateImages(List<String> images) {
+    if (images.isEmpty) {
       return 'Please add at least one image';
     }
     return null;
