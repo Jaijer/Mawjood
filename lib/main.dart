@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:mawjood/screens/landing_page/landing_page.dart';
-import 'config/theme.dart';
-import 'config/supabase_config.dart';  // Import the new Supabase config
+import 'components/theme2.dart'; // Updated import path
+import 'config/supabase_config.dart';
 
 void main() async {
   // Ensure Flutter is initialized
@@ -22,8 +22,8 @@ class MyApp extends StatelessWidget {
     return MaterialApp(
       title: 'KFUPM Lost & Found',
       debugShowCheckedModeBanner: false,
-      theme: lightTheme,
-      darkTheme: darkTheme,
+      theme: AppTheme.lightTheme, // Using our AppTheme class
+      darkTheme: AppTheme.darkTheme, // Using our AppTheme class
       themeMode: ThemeMode.light, // System default theme
       home: const LandingPage(),
     );

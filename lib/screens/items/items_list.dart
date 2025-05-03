@@ -3,6 +3,7 @@ import 'package:mawjood/models/item_model.dart';
 import 'package:mawjood/services/supabase_service.dart';
 import 'package:mawjood/screens/items/item_details_screen.dart';
 import 'package:mawjood/screens/items/edit_item_screen.dart';
+import 'package:mawjood/components/theme2.dart';  // Import theme for consistent styling
 
 class ItemsList extends StatefulWidget {
   final ItemType itemType;
@@ -13,118 +14,149 @@ class ItemsList extends StatefulWidget {
   State<ItemsList> createState() => _ItemsListState();
 }
 
-class _ItemsListState extends State<ItemsList> {
+class _ItemsListState extends State<ItemsList> with AutomaticKeepAliveClientMixin {
   final SupabaseService _supabaseService = SupabaseService();
   late Stream<List<Item>> _itemsStream;
+  final ValueNotifier<bool> _refreshTrigger = ValueNotifier<bool>(false);
+
+  @override
+  bool get wantKeepAlive => true; // Keep the state while switching tabs
 
   @override
   void initState() {
     super.initState();
+    _initStream();
+  }
+
+  void _initStream() {
     _itemsStream = _supabaseService.getItems(widget.itemType);
   }
 
   Future<void> _refreshItems() async {
+    // Toggle the notifier to force StreamBuilder to rebuild
+    _refreshTrigger.value = !_refreshTrigger.value;
     setState(() {
-      _itemsStream = _supabaseService.getItems(widget.itemType);
+      _initStream();
     });
+
+    return Future.delayed(const Duration(milliseconds: 300)); // Small delay for better UX
   }
 
   @override
   Widget build(BuildContext context) {
-    return RefreshIndicator(
-      onRefresh: _refreshItems,
-      child: StreamBuilder<List<Item>>(
-        stream: _itemsStream,
-        builder: (context, snapshot) {
-          // Loading state
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator());
-          }
+    super.build(context); // Required for AutomaticKeepAliveClientMixin
 
-          // Error state
-          if (snapshot.hasError) {
-            return Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const Icon(Icons.error_outline, size: 48, color: Colors.red),
-                  const SizedBox(height: 16),
-                  Text(
-                    'Error loading data: ${snapshot.error}',
-                    style: const TextStyle(color: Colors.red),
-                    textAlign: TextAlign.center,
-                  ),
-                  const SizedBox(height: 24),
-                  ElevatedButton(
-                    onPressed: _refreshItems,
-                    child: const Text('Retry'),
-                  ),
-                ],
-              ),
-            );
-          }
+    return Container(
+      // Use theme background decoration
+      decoration: context.backgroundDecoration,
+      child: ValueListenableBuilder<bool>(
+        valueListenable: _refreshTrigger,
+        builder: (context, _, __) {
+          return RefreshIndicator(
+            onRefresh: _refreshItems,
+            child: StreamBuilder<List<Item>>(
+              stream: _itemsStream,
+              builder: (context, snapshot) {
+                // Loading state
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const Center(
+                    child: CircularProgressIndicator(),
+                  );
+                }
 
-          // Empty state
-          if (!snapshot.hasData || snapshot.data!.isEmpty) {
-            return Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(
-                    widget.itemType == ItemType.lost
-                        ? Icons.search_off
-                        : Icons.help_outline,
-                    size: 64,
-                    color: Colors.grey,
-                  ),
-                  const SizedBox(height: 16),
-                  Text(
-                    widget.itemType == ItemType.lost
-                        ? 'No lost items reported yet'
-                        : 'No found items reported yet',
-                    style: const TextStyle(
-                      fontSize: 18,
-                      color: Colors.grey,
+                // Error state
+                if (snapshot.hasError) {
+                  return Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const Icon(Icons.error_outline, size: 48, color: Colors.red),
+                        const SizedBox(height: 16),
+                        Text(
+                          'Error loading data: ${snapshot.error}',
+                          style: const TextStyle(color: Colors.red),
+                          textAlign: TextAlign.center,
+                        ),
+                        const SizedBox(height: 24),
+                        ElevatedButton(
+                          onPressed: _refreshItems,
+                          child: const Text('Retry'),
+                        ),
+                      ],
                     ),
-                  ),
-                  const SizedBox(height: 8),
-                  const Text(
-                    'Be the first to add an item!',
-                    style: TextStyle(color: Colors.grey),
-                  ),
-                ],
-              ),
-            );
-          }
+                  );
+                }
 
-          // Data loaded successfully
-          final items = snapshot.data!;
-          return ListView.builder(
-            physics: const AlwaysScrollableScrollPhysics(),
-            padding: const EdgeInsets.all(8),
-            itemCount: items.length,
-            itemBuilder: (context, index) {
-              final item = items[index];
-              return ItemCard(
-                item: item,
-                onTap: () => _navigateToDetails(context, item),
-                onEdit: () => _navigateToEdit(context, item),
-                onDelete: () => _confirmDelete(context, item),
-              );
-            },
+                // Empty state
+                if (!snapshot.hasData || snapshot.data!.isEmpty) {
+                  return Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          widget.itemType == ItemType.lost
+                              ? Icons.search_off
+                              : Icons.help_outline,
+                          size: 64,
+                          color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
+                        ),
+                        const SizedBox(height: 16),
+                        Text(
+                          widget.itemType == ItemType.lost
+                              ? 'No lost items reported yet'
+                              : 'No found items reported yet',
+                          style: TextStyle(
+                            fontSize: 18,
+                            color: Theme.of(context).colorScheme.onSurface,
+                            fontFamily: 'Poppins',
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          'Be the first to add an item!',
+                          style: TextStyle(
+                            color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
+                            fontFamily: 'Poppins',
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
+                }
+
+                // Data loaded successfully
+                final items = snapshot.data!;
+                return ListView.builder(
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  padding: const EdgeInsets.all(16),
+                  itemCount: items.length,
+                  itemBuilder: (context, index) {
+                    final item = items[index];
+                    return ItemCard(
+                      item: item,
+                      onTap: () => _navigateToDetails(context, item),
+                      onEdit: () => _navigateToEdit(context, item),
+                      onDelete: () => _confirmDelete(context, item),
+                    );
+                  },
+                );
+              },
+            ),
           );
         },
       ),
     );
   }
 
-  void _navigateToDetails(BuildContext context, Item item) {
-    Navigator.push(
+  void _navigateToDetails(BuildContext context, Item item) async {
+    await Navigator.push(
       context,
       MaterialPageRoute(
         builder: (context) => ItemDetailsScreen(item: item),
       ),
     );
+    // Refresh the list when returning from details
+    _refreshItems();
   }
 
   void _navigateToEdit(BuildContext context, Item item) async {
@@ -205,6 +237,9 @@ class ItemCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Get screen width to make images responsive
+    final screenWidth = MediaQuery.of(context).size.width;
+
     return Card(
       margin: const EdgeInsets.only(bottom: 16),
       elevation: 2,
@@ -217,37 +252,48 @@ class ItemCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Item image
+            // Item image - Make responsive based on screen size
             if (item.imageUrls.isNotEmpty)
               ClipRRect(
                 borderRadius: const BorderRadius.vertical(
                   top: Radius.circular(12),
                 ),
-                child: AspectRatio(
-                  aspectRatio: 16 / 9,
-                  child: Image.network(
-                    item.imageUrls.first,
-                    fit: BoxFit.cover,
-                    loadingBuilder: (context, child, loadingProgress) {
-                      if (loadingProgress == null) return child;
-                      return Center(
-                        child: CircularProgressIndicator(
-                          value: loadingProgress.expectedTotalBytes != null
-                              ? loadingProgress.cumulativeBytesLoaded /
-                              loadingProgress.expectedTotalBytes!
-                              : null,
+                child: LayoutBuilder(
+                    builder: (context, constraints) {
+                      // Calculate height based on screen width to maintain aspect ratio
+                      // but with a maximum height on large screens
+                      final imageHeight = screenWidth > 600
+                          ? 180.0 // Fixed height for larger screens
+                          : screenWidth * 9 / 16; // 16:9 aspect ratio for smaller screens
+
+                      return SizedBox(
+                        height: imageHeight,
+                        width: constraints.maxWidth,
+                        child: Image.network(
+                          item.imageUrls.first,
+                          fit: BoxFit.cover,
+                          loadingBuilder: (context, child, loadingProgress) {
+                            if (loadingProgress == null) return child;
+                            return Center(
+                              child: CircularProgressIndicator(
+                                value: loadingProgress.expectedTotalBytes != null
+                                    ? loadingProgress.cumulativeBytesLoaded /
+                                    loadingProgress.expectedTotalBytes!
+                                    : null,
+                              ),
+                            );
+                          },
+                          errorBuilder: (context, error, stackTrace) {
+                            return Container(
+                              color: Colors.grey[200],
+                              child: const Center(
+                                child: Icon(Icons.broken_image, size: 48, color: Colors.grey),
+                              ),
+                            );
+                          },
                         ),
                       );
-                    },
-                    errorBuilder: (context, error, stackTrace) {
-                      return Container(
-                        color: Colors.grey[200],
-                        child: const Center(
-                          child: Icon(Icons.broken_image, size: 48, color: Colors.grey),
-                        ),
-                      );
-                    },
-                  ),
+                    }
                 ),
               ),
 
@@ -263,21 +309,25 @@ class ItemCard extends StatelessWidget {
                     children: [
                       Chip(
                         backgroundColor: item.status == ItemStatus.active
-                            ? Colors.blue.withOpacity(0.2)
+                            ? Theme.of(context).colorScheme.primary.withOpacity(0.2)
                             : Colors.green.withOpacity(0.2),
                         label: Text(
                           item.status == ItemStatus.active ? 'Active' : 'Resolved',
                           style: TextStyle(
                             color: item.status == ItemStatus.active
-                                ? Colors.blue
+                                ? Theme.of(context).colorScheme.primary
                                 : Colors.green,
                             fontWeight: FontWeight.bold,
+                            fontFamily: 'Poppins',
                           ),
                         ),
                       ),
                       Text(
                         '${item.date.day}/${item.date.month}/${item.date.year}',
-                        style: const TextStyle(color: Colors.grey),
+                        style: TextStyle(
+                          color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
+                          fontFamily: 'Poppins',
+                        ),
                       ),
                     ],
                   ),
@@ -286,9 +336,11 @@ class ItemCard extends StatelessWidget {
                   // Title
                   Text(
                     item.title,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 18,
                       fontWeight: FontWeight.bold,
+                      fontFamily: 'Poppins',
+                      color: Theme.of(context).colorScheme.onSurface,
                     ),
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
@@ -303,12 +355,19 @@ class ItemCard extends StatelessWidget {
                         flex: 2,
                         child: Row(
                           children: [
-                            const Icon(Icons.location_on, size: 16, color: Colors.grey),
+                            Icon(
+                              Icons.location_on,
+                              size: 16,
+                              color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
+                            ),
                             const SizedBox(width: 4),
                             Expanded(
                               child: Text(
                                 item.location,
-                                style: const TextStyle(color: Colors.grey),
+                                style: TextStyle(
+                                  color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
+                                  fontFamily: 'Poppins',
+                                ),
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
                               ),
@@ -322,12 +381,19 @@ class ItemCard extends StatelessWidget {
                         flex: 1,
                         child: Row(
                           children: [
-                            const Icon(Icons.category, size: 16, color: Colors.grey),
+                            Icon(
+                              Icons.category,
+                              size: 16,
+                              color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
+                            ),
                             const SizedBox(width: 4),
                             Expanded(
                               child: Text(
                                 item.category,
-                                style: const TextStyle(color: Colors.grey),
+                                style: TextStyle(
+                                  color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
+                                  fontFamily: 'Poppins',
+                                ),
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
                               ),
@@ -346,7 +412,11 @@ class ItemCard extends StatelessWidget {
                       // Edit button
                       IconButton(
                         onPressed: onEdit,
-                        icon: const Icon(Icons.edit, size: 20),
+                        icon: Icon(
+                          Icons.edit,
+                          size: 20,
+                          color: Theme.of(context).colorScheme.primary,
+                        ),
                         tooltip: 'Edit',
                         padding: EdgeInsets.zero,
                         constraints: const BoxConstraints(),
