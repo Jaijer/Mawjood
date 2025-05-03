@@ -13,7 +13,7 @@ class ItemDetailsScreen extends StatefulWidget {
 }
 
 class _ItemDetailsScreenState extends State<ItemDetailsScreen> {
-  final FirestoreService _firestoreService = FirestoreService();
+  final SupabaseService _supabaseService = SupabaseService();
   late Item _currentItem;
   bool _isLoading = false;
 
@@ -29,7 +29,7 @@ class _ItemDetailsScreenState extends State<ItemDetailsScreen> {
         _isLoading = true;
       });
 
-      final updatedItem = await _firestoreService.getItemById(_currentItem.id);
+      final updatedItem = await _supabaseService.getItemById(_currentItem.id);
 
       if (updatedItem != null && mounted) {
         setState(() {
@@ -264,7 +264,7 @@ class _ItemDetailsScreenState extends State<ItemDetailsScreen> {
                                 });
 
                                 // Mark item as resolved
-                                await _firestoreService.markItemAsResolved(_currentItem);
+                                await _supabaseService.markItemAsResolved(_currentItem);
 
                                 // Refresh item details
                                 await _refreshItemDetails();

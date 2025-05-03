@@ -14,18 +14,18 @@ class ItemsList extends StatefulWidget {
 }
 
 class _ItemsListState extends State<ItemsList> {
-  final FirestoreService _firestoreService = FirestoreService();
+  final SupabaseService _supabaseService = SupabaseService();
   late Stream<List<Item>> _itemsStream;
 
   @override
   void initState() {
     super.initState();
-    _itemsStream = _firestoreService.getItems(widget.itemType);
+    _itemsStream = _supabaseService.getItems(widget.itemType);
   }
 
   Future<void> _refreshItems() async {
     setState(() {
-      _itemsStream = _firestoreService.getItems(widget.itemType);
+      _itemsStream = _supabaseService.getItems(widget.itemType);
     });
   }
 
@@ -166,7 +166,7 @@ class _ItemsListState extends State<ItemsList> {
 
     if (shouldDelete == true) {
       try {
-        await _firestoreService.deleteItem(item);
+        await _supabaseService.deleteItem(item);
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(

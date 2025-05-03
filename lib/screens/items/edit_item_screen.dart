@@ -1,5 +1,5 @@
-import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 import '../../models/item_model.dart';
 import '../../utils/form_validators.dart';
 import './image_picker.dart';
@@ -30,10 +30,9 @@ class _EditItemScreenState extends State<EditItemScreen> {
   late DateTime _selectedDate;
   late TextEditingController _contactInfoController;
   late List<String> _imageUrls;
-  late List<File> _imageFiles = [];
+  late List<XFile> _imageFiles = [];
   late ItemStatus _status;
 
-  // Predefined categories for lost and found items
   final List<String> _lostCategories = [
     'Electronics', 'Documents', 'Clothing', 'Keys', 'Bags', 'Other'
   ];
@@ -48,7 +47,6 @@ class _EditItemScreenState extends State<EditItemScreen> {
   @override
   void initState() {
     super.initState();
-    // Initialize controllers with existing item data
     _titleController = TextEditingController(text: widget.item.title);
     _descriptionController = TextEditingController(text: widget.item.description);
     _selectedCategory = widget.item.category;
@@ -82,7 +80,7 @@ class _EditItemScreenState extends State<EditItemScreen> {
     }
   }
 
-  void _handleFileSelected(File file) {
+  void _handleFileSelected(XFile file) {
     setState(() {
       _imageFiles.add(file);
     });
@@ -114,17 +112,14 @@ class _EditItemScreenState extends State<EditItemScreen> {
       });
 
       try {
-        // Upload new images to Supabase storage
         List<String> newImageUrls = [];
-        for (File file in _imageFiles) {
+        for (XFile file in _imageFiles) {
           final imageUrl = await _supabaseService.uploadImage(file);
           newImageUrls.add(imageUrl);
         }
 
-        // Combine existing and new image URLs
         final allImageUrls = [..._imageUrls, ...newImageUrls];
 
-        // Create updated item
         final updatedItem = widget.item.copyWith(
           title: _titleController.text,
           description: _descriptionController.text,
@@ -136,18 +131,15 @@ class _EditItemScreenState extends State<EditItemScreen> {
           status: _status,
         );
 
-        // Update the item in Supabase
         await _supabaseService.updateItem(updatedItem);
 
-        // Show success message
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(content: Text('Item updated successfully')),
           );
-          Navigator.pop(context, true); // Return true to indicate success
+          Navigator.pop(context, true);
         }
       } catch (e) {
-        // Show error message
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(content: Text('Error updating item: $e')),
@@ -178,7 +170,6 @@ class _EditItemScreenState extends State<EditItemScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Image picker
               CustomImagePicker(
                 imageFiles: _imageFiles,
                 imageUrls: _imageUrls,
@@ -186,8 +177,6 @@ class _EditItemScreenState extends State<EditItemScreen> {
                 onImageRemoved: _handleImageRemoved,
               ),
               const SizedBox(height: 20),
-
-              // Title
               TextFormField(
                 controller: _titleController,
                 decoration: const InputDecoration(
@@ -197,8 +186,6 @@ class _EditItemScreenState extends State<EditItemScreen> {
                 validator: FormValidators.validateTitle,
               ),
               const SizedBox(height: 16),
-
-              // Description
               TextFormField(
                 controller: _descriptionController,
                 decoration: const InputDecoration(
@@ -209,8 +196,6 @@ class _EditItemScreenState extends State<EditItemScreen> {
                 validator: FormValidators.validateDescription,
               ),
               const SizedBox(height: 16),
-
-              // Category dropdown
               DropdownButtonFormField<String>(
                 decoration: const InputDecoration(
                   labelText: 'Category',
@@ -233,8 +218,6 @@ class _EditItemScreenState extends State<EditItemScreen> {
                 validator: FormValidators.validateCategory,
               ),
               const SizedBox(height: 16),
-
-              // Location
               TextFormField(
                 controller: _locationController,
                 decoration: const InputDecoration(
@@ -244,8 +227,6 @@ class _EditItemScreenState extends State<EditItemScreen> {
                 validator: FormValidators.validateLocation,
               ),
               const SizedBox(height: 16),
-
-              // Date picker
               ListTile(
                 contentPadding: EdgeInsets.zero,
                 title: const Text('Date'),
@@ -257,8 +238,6 @@ class _EditItemScreenState extends State<EditItemScreen> {
                 onTap: () => _selectDate(context),
               ),
               const SizedBox(height: 16),
-
-              // Contact info
               TextFormField(
                 controller: _contactInfoController,
                 decoration: const InputDecoration(
@@ -268,8 +247,6 @@ class _EditItemScreenState extends State<EditItemScreen> {
                 validator: FormValidators.validateContactInfo,
               ),
               const SizedBox(height: 24),
-
-              // Status toggle
               SwitchListTile(
                 title: const Text('Mark as Resolved'),
                 subtitle: const Text('Toggle if the item has been returned'),
@@ -281,8 +258,6 @@ class _EditItemScreenState extends State<EditItemScreen> {
                 },
               ),
               const SizedBox(height: 24),
-
-              // Update button
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton(

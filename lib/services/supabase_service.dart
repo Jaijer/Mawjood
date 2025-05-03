@@ -4,6 +4,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:uuid/uuid.dart';
 import '../config/supabase_config.dart';
 import '../models/item_model.dart';
+import 'package:cross_file/cross_file.dart';
 
 class SupabaseService {
   final SupabaseClient _client = SupabaseConfig.client;
@@ -19,22 +20,28 @@ class SupabaseService {
   }
 
   // Upload image to Supabase Storage
-  Future<String> uploadImage(File imageFile) async {
+  Future<String> uploadImage(XFile imageFile) async { // Change parameter type to XFile
     try {
-      final String fileExtension = path.extension(imageFile.path);
-      final String fileName = '${_uuid.v4()}$fileExtension';
+      final String fileName = '${_uuid.v4()}${_getFileExtension(imageFile.name)}';
       final String filePath = 'item_images/$fileName';
 
-      await _client.storage.from('items').upload(filePath, imageFile);
+      // Read bytes from XFile
+      final bytes = await imageFile.readAsBytes();
 
-      // Get public URL for the uploaded file
+      await _client.storage.from('items').uploadBinary(filePath, bytes);
+
       final String imageUrl = _client.storage.from('items').getPublicUrl(filePath);
-
       return imageUrl;
     } catch (e) {
       print('Error uploading image: $e');
       throw Exception('Failed to upload image: $e');
     }
+  }
+
+  String _getFileExtension(String fileName) {
+    final int lastDotIndex = fileName.lastIndexOf('.');
+    if (lastDotIndex == -1) return '';
+    return fileName.substring(lastDotIndex);
   }
 
   // Get all items of a specific type (lost or found)

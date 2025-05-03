@@ -1,13 +1,13 @@
-import 'dart:io';
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:cached_network_image/cached_network_image.dart';
-import '../../services/supabase_service.dart';
 
 class CustomImagePicker extends StatelessWidget {
-  final List<File> imageFiles;
+  final List<XFile> imageFiles;
   final List<String> imageUrls;
-  final Function(File) onFileSelected;
+  final Function(XFile) onFileSelected;
   final Function(int) onImageRemoved;
 
   const CustomImagePicker({
@@ -45,7 +45,7 @@ class CustomImagePicker extends StatelessWidget {
             itemCount: imageFiles.length + imageUrls.length,
             itemBuilder: (context, index) {
               if (index < imageFiles.length) {
-                return _FilePreview(
+                return _XFilePreview(
                   imageFile: imageFiles[index],
                   onRemove: () => onImageRemoved(index),
                 );
@@ -70,7 +70,7 @@ class CustomImagePicker extends StatelessWidget {
                     imageQuality: 80,
                   );
                   if (image != null) {
-                    onFileSelected(File(image.path));
+                    onFileSelected(image);
                   }
                 },
                 icon: const Icon(Icons.camera_alt),
@@ -87,7 +87,7 @@ class CustomImagePicker extends StatelessWidget {
                     imageQuality: 80,
                   );
                   if (image != null) {
-                    onFileSelected(File(image.path));
+                    onFileSelected(image);
                   }
                 },
                 icon: const Icon(Icons.photo_library),
@@ -101,11 +101,11 @@ class CustomImagePicker extends StatelessWidget {
   }
 }
 
-class _FilePreview extends StatelessWidget {
-  final File imageFile;
+class _XFilePreview extends StatelessWidget {
+  final XFile imageFile;
   final VoidCallback onRemove;
 
-  const _FilePreview({
+  const _XFilePreview({
     required this.imageFile,
     required this.onRemove,
   });
@@ -114,14 +114,26 @@ class _FilePreview extends StatelessWidget {
   Widget build(BuildContext context) {
     return Stack(
       children: [
-        ClipRRect(
-          borderRadius: BorderRadius.circular(8),
-          child: Image.file(
-            imageFile,
-            fit: BoxFit.cover,
-            width: double.infinity,
-            height: double.infinity,
-          ),
+        FutureBuilder<String>(
+          future: imageFile.readAsBytes().then((bytes) => 'data:image;base64,${base64Encode(bytes)}'),
+          builder: (context, snapshot) {
+            if (snapshot.connectionState == ConnectionState.done && snapshot.hasData) {
+              return ClipRRect(
+                borderRadius: BorderRadius.circular(8),
+                child: Image.memory(
+                  base64Decode(snapshot.data!.split(',').last),
+                  fit: BoxFit.cover,
+                  width: double.infinity,
+                  height: double.infinity,
+                ),
+              );
+            } else {
+              return Container(
+                color: Colors.grey[300],
+                child: const Center(child: CircularProgressIndicator()),
+              );
+            }
+          },
         ),
         Positioned(
           top: 4,
@@ -167,7 +179,7 @@ class _UrlPreview extends StatelessWidget {
             fit: BoxFit.cover,
             width: double.infinity,
             height: double.infinity,
-            placeholder: (context, url) => Center(
+            placeholder: (context, url) => const Center(
               child: CircularProgressIndicator(),
             ),
             errorWidget: (context, url, error) => Container(

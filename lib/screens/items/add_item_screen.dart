@@ -1,5 +1,5 @@
-import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:mawjood/models/item_model.dart';
 import 'package:mawjood/screens/items/image_picker.dart';
 import 'package:mawjood/services/supabase_service.dart';
@@ -33,8 +33,7 @@ class _AddItemScreenState extends State<AddItemScreen> {
   // Form state
   String _selectedCategory = '';
   DateTime _selectedDate = DateTime.now();
-  List<File> _imageFiles = [];
-  List<String> _imageUrls = [];
+  List<XFile> _imageFiles = [];
   bool _isSubmitting = false;
 
   final List<String> _categories = [
@@ -71,17 +70,16 @@ class _AddItemScreenState extends State<AddItemScreen> {
       return;
     }
 
-    // Show loading state
     setState(() {
       _isSubmitting = true;
     });
 
     try {
       // Upload images to Supabase storage
-      _imageUrls = [];
-      for (File file in _imageFiles) {
+      List<String> imageUrls = [];
+      for (XFile file in _imageFiles) {
         final imageUrl = await _supabaseService.uploadImage(file);
-        _imageUrls.add(imageUrl);
+        imageUrls.add(imageUrl);
       }
 
       // Get current user id from Supabase
@@ -94,7 +92,7 @@ class _AddItemScreenState extends State<AddItemScreen> {
         category: _selectedCategory,
         location: _locationController.text.trim(),
         date: _selectedDate,
-        imageUrls: _imageUrls,
+        imageUrls: imageUrls,
         userId: userId,
         contactInfo: _contactInfoController.text.trim(),
         type: widget.itemType,
@@ -105,7 +103,6 @@ class _AddItemScreenState extends State<AddItemScreen> {
 
       if (!mounted) return;
 
-      // Show success message
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(widget.itemType == ItemType.lost
@@ -117,7 +114,6 @@ class _AddItemScreenState extends State<AddItemScreen> {
 
       Navigator.pop(context);
     } catch (e) {
-      // Hide loading state in case of error
       setState(() {
         _isSubmitting = false;
       });
@@ -132,7 +128,7 @@ class _AddItemScreenState extends State<AddItemScreen> {
     }
   }
 
-  void _handleFileSelected(File file) {
+  void _handleFileSelected(XFile file) {
     setState(() {
       _imageFiles.add(file);
     });
