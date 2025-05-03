@@ -137,19 +137,17 @@ class _EditItemScreenState extends State<EditItemScreen> {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(content: Text('Item updated successfully')),
           );
+          // Return true to indicate successful update
           Navigator.pop(context, true);
         }
       } catch (e) {
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Error updating item: $e')),
-          );
-        }
-      } finally {
-        if (mounted) {
           setState(() {
             _isLoading = false;
           });
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Error updating item: $e')),
+          );
         }
       }
     }

@@ -13,6 +13,9 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateMixin {
   late TabController _tabController;
+  // Keys to access the ItemsList widgets
+  final GlobalKey<ItemsListState> _lostItemsKey = GlobalKey<ItemsListState>();
+  final GlobalKey<ItemsListState> _foundItemsKey = GlobalKey<ItemsListState>();
 
   @override
   void initState() {
@@ -51,8 +54,8 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
           body: TabBarView(
             controller: _tabController,
             children: [
-              ItemsList(itemType: ItemType.lost),
-              ItemsList(itemType: ItemType.found),
+              ItemsList(key: _lostItemsKey, itemType: ItemType.lost),
+              ItemsList(key: _foundItemsKey, itemType: ItemType.found),
             ],
           ),
         ),
@@ -68,7 +71,15 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
             ),
           );
 
+          // Refresh list when returning from add screen
           if (result == true && mounted) {
+            // Refresh the active tab
+            if (_tabController.index == 0) {
+              _lostItemsKey.currentState?.refreshItems();
+            } else {
+              _foundItemsKey.currentState?.refreshItems();
+            }
+
             ScaffoldMessenger.of(context).showSnackBar(
               const SnackBar(content: Text('Item added successfully')),
             );

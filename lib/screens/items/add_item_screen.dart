@@ -103,16 +103,8 @@ class _AddItemScreenState extends State<AddItemScreen> {
 
       if (!mounted) return;
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(widget.itemType == ItemType.lost
-              ? 'Lost item reported successfully'
-              : 'Found item reported successfully'),
-          backgroundColor: Colors.green,
-        ),
-      );
-
-      Navigator.pop(context);
+      // Return true to indicate successful creation
+      Navigator.pop(context, true);
     } catch (e) {
       setState(() {
         _isSubmitting = false;

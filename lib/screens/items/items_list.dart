@@ -11,13 +11,23 @@ class ItemsList extends StatefulWidget {
   const ItemsList({Key? key, required this.itemType}) : super(key: key);
 
   @override
-  State<ItemsList> createState() => _ItemsListState();
+  State<ItemsList> createState() => ItemsListState();
 }
 
-class _ItemsListState extends State<ItemsList> with AutomaticKeepAliveClientMixin {
+class ItemsListState extends State<ItemsList> with AutomaticKeepAliveClientMixin {
   final SupabaseService _supabaseService = SupabaseService();
   late Stream<List<Item>> _itemsStream;
   final ValueNotifier<bool> _refreshTrigger = ValueNotifier<bool>(false);
+
+  // Public method to refresh the list from outside
+  void refreshItems() {
+    _refreshItems();
+  }
+
+  // Legacy method for backward compatibility
+  void refreshList() {
+    refreshItems();
+  }
 
   @override
   bool get wantKeepAlive => true; // Keep the state while switching tabs
@@ -149,14 +159,17 @@ class _ItemsListState extends State<ItemsList> with AutomaticKeepAliveClientMixi
   }
 
   void _navigateToDetails(BuildContext context, Item item) async {
-    await Navigator.push(
+    final needsRefresh = await Navigator.push(
       context,
       MaterialPageRoute(
         builder: (context) => ItemDetailsScreen(item: item),
       ),
     );
-    // Refresh the list when returning from details
-    _refreshItems();
+
+    // Refresh if return value indicates changes were made
+    if (needsRefresh == true) {
+      _refreshItems();
+    }
   }
 
   void _navigateToEdit(BuildContext context, Item item) async {
@@ -167,6 +180,7 @@ class _ItemsListState extends State<ItemsList> with AutomaticKeepAliveClientMixi
       ),
     );
 
+    // Refresh if return value indicates changes were made
     if (result == true) {
       _refreshItems();
     }
@@ -199,6 +213,10 @@ class _ItemsListState extends State<ItemsList> with AutomaticKeepAliveClientMixi
     if (shouldDelete == true) {
       try {
         await _supabaseService.deleteItem(item);
+
+        // Always refresh after deletion
+        _refreshItems();
+
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
