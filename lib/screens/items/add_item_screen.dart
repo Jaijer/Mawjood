@@ -1,10 +1,11 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:mawjood/models/item_model.dart';
 import 'package:mawjood/screens/items/image_picker.dart';
 import 'package:mawjood/services/supabase_service.dart';
 import 'package:mawjood/utils/form_validators.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:uuid/uuid.dart';
+import '../../config/supabase_config.dart';
 
 class AddItemScreen extends StatefulWidget {
   final ItemType itemType;
@@ -20,9 +21,8 @@ class AddItemScreen extends StatefulWidget {
 
 class _AddItemScreenState extends State<AddItemScreen> {
   final _formKey = GlobalKey<FormState>();
-  final FirestoreService _firestoreService = FirestoreService();
+  final SupabaseService _supabaseService = SupabaseService();
   final Uuid _uuid = const Uuid();
-  final FirebaseAuth _auth = FirebaseAuth.instance;
 
   // Controllers
   final _titleController = TextEditingController();
@@ -33,6 +33,7 @@ class _AddItemScreenState extends State<AddItemScreen> {
   // Form state
   String _selectedCategory = '';
   DateTime _selectedDate = DateTime.now();
+  List<File> _imageFiles = [];
   List<String> _imageUrls = [];
   bool _isSubmitting = false;
 
@@ -63,7 +64,7 @@ class _AddItemScreenState extends State<AddItemScreen> {
 
   Future<void> _submitForm() async {
     if (!_formKey.currentState!.validate()) return;
-    if (_imageUrls.isEmpty) {
+    if (_imageFiles.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Please add at least one image')),
       );
@@ -76,6 +77,16 @@ class _AddItemScreenState extends State<AddItemScreen> {
     });
 
     try {
+      // Upload images to Supabase storage
+      _imageUrls = [];
+      for (File file in _imageFiles) {
+        final imageUrl = await _supabaseService.uploadImage(file);
+        _imageUrls.add(imageUrl);
+      }
+
+      // Get current user id from Supabase
+      final userId = SupabaseConfig.client.auth.currentUser?.id ?? 'anonymous_user';
+
       final newItem = Item(
         id: _uuid.v4(),
         title: _titleController.text.trim(),
@@ -84,13 +95,13 @@ class _AddItemScreenState extends State<AddItemScreen> {
         location: _locationController.text.trim(),
         date: _selectedDate,
         imageUrls: _imageUrls,
-        userId: _auth.currentUser?.uid ?? 'anonymous_user',
+        userId: userId,
         contactInfo: _contactInfoController.text.trim(),
         type: widget.itemType,
         status: ItemStatus.active,
       );
 
-      await _firestoreService.addItem(newItem);
+      await _supabaseService.addItem(newItem);
 
       if (!mounted) return;
 
@@ -121,6 +132,18 @@ class _AddItemScreenState extends State<AddItemScreen> {
     }
   }
 
+  void _handleFileSelected(File file) {
+    setState(() {
+      _imageFiles.add(file);
+    });
+  }
+
+  void _handleImageRemoved(int index) {
+    setState(() {
+      _imageFiles.removeAt(index);
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -137,17 +160,15 @@ class _AddItemScreenState extends State<AddItemScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               CustomImagePicker(
-                images: _imageUrls,
-                onImageSelected: (imageUrl) =>
-                    setState(() => _imageUrls.add(imageUrl)),
-                onImageRemoved: (index) =>
-                    setState(() => _imageUrls.removeAt(index)),
+                imageFiles: _imageFiles,
+                imageUrls: const [],
+                onFileSelected: _handleFileSelected,
+                onImageRemoved: _handleImageRemoved,
               ),
               const SizedBox(height: 20),
               TextFormField(
                 controller: _titleController,
                 decoration: const InputDecoration(
-                  border: OutlineInputBorder(),
                   labelText: 'Title*',
                   hintText: 'Brief description of the item',
                 ),
@@ -157,7 +178,6 @@ class _AddItemScreenState extends State<AddItemScreen> {
               TextFormField(
                 controller: _descriptionController,
                 decoration: const InputDecoration(
-                  border: OutlineInputBorder(),
                   labelText: 'Description*',
                   hintText: 'Detailed description of the item',
                 ),
@@ -167,7 +187,6 @@ class _AddItemScreenState extends State<AddItemScreen> {
               const SizedBox(height: 16),
               DropdownButtonFormField<String>(
                 decoration: const InputDecoration(
-                  border: OutlineInputBorder(),
                   labelText: 'Category*',
                 ),
                 value: _selectedCategory.isEmpty ? null : _selectedCategory,
@@ -185,7 +204,6 @@ class _AddItemScreenState extends State<AddItemScreen> {
               TextFormField(
                 controller: _locationController,
                 decoration: const InputDecoration(
-                  border: OutlineInputBorder(),
                   labelText: 'Location*',
                   hintText: 'Where was the item lost/found?',
                 ),
@@ -196,7 +214,6 @@ class _AddItemScreenState extends State<AddItemScreen> {
                 onTap: () => _selectDate(context),
                 child: InputDecorator(
                   decoration: const InputDecoration(
-                    border: OutlineInputBorder(),
                     labelText: 'Date*',
                   ),
                   child: Row(
@@ -215,7 +232,6 @@ class _AddItemScreenState extends State<AddItemScreen> {
               TextFormField(
                 controller: _contactInfoController,
                 decoration: const InputDecoration(
-                  border: OutlineInputBorder(),
                   labelText: 'Contact Information*',
                   hintText: 'How can others reach you?',
                 ),
@@ -231,7 +247,7 @@ class _AddItemScreenState extends State<AddItemScreen> {
                   ),
                   child: _isSubmitting
                       ? const CircularProgressIndicator()
-                      : Text(
+                      : const Text(
                     'Submit',
                     style: TextStyle(fontSize: 16),
                   ),

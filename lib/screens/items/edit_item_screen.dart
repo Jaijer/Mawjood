@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import '../../models/item_model.dart';
 import '../../utils/form_validators.dart';
@@ -18,7 +19,7 @@ class EditItemScreen extends StatefulWidget {
 
 class _EditItemScreenState extends State<EditItemScreen> {
   final _formKey = GlobalKey<FormState>();
-  final _firestoreService = FirestoreService();
+  final _supabaseService = SupabaseService();
   bool _isLoading = false;
 
   // Form fields
@@ -29,6 +30,7 @@ class _EditItemScreenState extends State<EditItemScreen> {
   late DateTime _selectedDate;
   late TextEditingController _contactInfoController;
   late List<String> _imageUrls;
+  late List<File> _imageFiles = [];
   late ItemStatus _status;
 
   // Predefined categories for lost and found items
@@ -80,21 +82,27 @@ class _EditItemScreenState extends State<EditItemScreen> {
     }
   }
 
-  void _handleImageSelected(String imageUrl) {
+  void _handleFileSelected(File file) {
     setState(() {
-      _imageUrls.add(imageUrl);
+      _imageFiles.add(file);
     });
   }
 
   void _handleImageRemoved(int index) {
-    setState(() {
-      _imageUrls.removeAt(index);
-    });
+    if (index < _imageUrls.length) {
+      setState(() {
+        _imageUrls.removeAt(index);
+      });
+    } else {
+      setState(() {
+        _imageFiles.removeAt(index - _imageUrls.length);
+      });
+    }
   }
 
   Future<void> _updateItem() async {
     if (_formKey.currentState!.validate()) {
-      if (_imageUrls.isEmpty) {
+      if (_imageUrls.isEmpty && _imageFiles.isEmpty) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Please add at least one image')),
         );
@@ -106,6 +114,16 @@ class _EditItemScreenState extends State<EditItemScreen> {
       });
 
       try {
+        // Upload new images to Supabase storage
+        List<String> newImageUrls = [];
+        for (File file in _imageFiles) {
+          final imageUrl = await _supabaseService.uploadImage(file);
+          newImageUrls.add(imageUrl);
+        }
+
+        // Combine existing and new image URLs
+        final allImageUrls = [..._imageUrls, ...newImageUrls];
+
         // Create updated item
         final updatedItem = widget.item.copyWith(
           title: _titleController.text,
@@ -114,12 +132,12 @@ class _EditItemScreenState extends State<EditItemScreen> {
           location: _locationController.text,
           date: _selectedDate,
           contactInfo: _contactInfoController.text,
-          imageUrls: _imageUrls,
+          imageUrls: allImageUrls,
           status: _status,
         );
 
-        // Update the item in Firestore
-        await _firestoreService.updateItem(updatedItem);
+        // Update the item in Supabase
+        await _supabaseService.updateItem(updatedItem);
 
         // Show success message
         if (mounted) {
@@ -162,8 +180,9 @@ class _EditItemScreenState extends State<EditItemScreen> {
             children: [
               // Image picker
               CustomImagePicker(
-                images: _imageUrls,
-                onImageSelected: _handleImageSelected,
+                imageFiles: _imageFiles,
+                imageUrls: _imageUrls,
+                onFileSelected: _handleFileSelected,
                 onImageRemoved: _handleImageRemoved,
               ),
               const SizedBox(height: 20),
