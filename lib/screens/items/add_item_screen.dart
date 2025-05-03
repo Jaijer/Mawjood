@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:mawjood/models/item_model.dart';
 import 'package:mawjood/screens/items/image_picker.dart';
-import 'package:mawjood/services/firestore_service.dart';
+import 'package:mawjood/services/supabase_service.dart';
 import 'package:mawjood/utils/form_validators.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:uuid/uuid.dart';
 
 class AddItemScreen extends StatefulWidget {
@@ -21,6 +22,7 @@ class _AddItemScreenState extends State<AddItemScreen> {
   final _formKey = GlobalKey<FormState>();
   final FirestoreService _firestoreService = FirestoreService();
   final Uuid _uuid = const Uuid();
+  final FirebaseAuth _auth = FirebaseAuth.instance;
 
   // Controllers
   final _titleController = TextEditingController();
@@ -32,6 +34,7 @@ class _AddItemScreenState extends State<AddItemScreen> {
   String _selectedCategory = '';
   DateTime _selectedDate = DateTime.now();
   List<String> _imageUrls = [];
+  bool _isSubmitting = false;
 
   final List<String> _categories = [
     'Electronics', 'Documents', 'Clothing', 'Keys', 'Bags', 'Other'
@@ -67,27 +70,53 @@ class _AddItemScreenState extends State<AddItemScreen> {
       return;
     }
 
+    // Show loading state
+    setState(() {
+      _isSubmitting = true;
+    });
+
     try {
       final newItem = Item(
         id: _uuid.v4(),
-        title: _titleController.text,
-        description: _descriptionController.text,
+        title: _titleController.text.trim(),
+        description: _descriptionController.text.trim(),
         category: _selectedCategory,
-        location: _locationController.text,
+        location: _locationController.text.trim(),
         date: _selectedDate,
         imageUrls: _imageUrls,
-        userId: 'current_user_id', // Replace with actual user ID
-        contactInfo: _contactInfoController.text,
+        userId: _auth.currentUser?.uid ?? 'anonymous_user',
+        contactInfo: _contactInfoController.text.trim(),
         type: widget.itemType,
+        status: ItemStatus.active,
       );
 
       await _firestoreService.addItem(newItem);
 
       if (!mounted) return;
+
+      // Show success message
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(widget.itemType == ItemType.lost
+              ? 'Lost item reported successfully'
+              : 'Found item reported successfully'),
+          backgroundColor: Colors.green,
+        ),
+      );
+
       Navigator.pop(context);
     } catch (e) {
+      // Hide loading state in case of error
+      setState(() {
+        _isSubmitting = false;
+      });
+
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error: ${e.toString()}')),
+        SnackBar(
+          content: Text('Error: ${e.toString()}'),
+          backgroundColor: Colors.red,
+        ),
       );
     }
   }
@@ -118,6 +147,7 @@ class _AddItemScreenState extends State<AddItemScreen> {
               TextFormField(
                 controller: _titleController,
                 decoration: const InputDecoration(
+                  border: OutlineInputBorder(),
                   labelText: 'Title*',
                   hintText: 'Brief description of the item',
                 ),
@@ -127,6 +157,7 @@ class _AddItemScreenState extends State<AddItemScreen> {
               TextFormField(
                 controller: _descriptionController,
                 decoration: const InputDecoration(
+                  border: OutlineInputBorder(),
                   labelText: 'Description*',
                   hintText: 'Detailed description of the item',
                 ),
@@ -136,6 +167,7 @@ class _AddItemScreenState extends State<AddItemScreen> {
               const SizedBox(height: 16),
               DropdownButtonFormField<String>(
                 decoration: const InputDecoration(
+                  border: OutlineInputBorder(),
                   labelText: 'Category*',
                 ),
                 value: _selectedCategory.isEmpty ? null : _selectedCategory,
@@ -153,26 +185,37 @@ class _AddItemScreenState extends State<AddItemScreen> {
               TextFormField(
                 controller: _locationController,
                 decoration: const InputDecoration(
+                  border: OutlineInputBorder(),
                   labelText: 'Location*',
                   hintText: 'Where was the item lost/found?',
                 ),
                 validator: FormValidators.validateLocation,
               ),
               const SizedBox(height: 16),
-              ListTile(
-                contentPadding: EdgeInsets.zero,
-                title: const Text('Date*'),
-                subtitle: Text(
-                  '${_selectedDate.day}/${_selectedDate.month}/${_selectedDate.year}',
-                  style: const TextStyle(fontWeight: FontWeight.bold),
-                ),
-                trailing: const Icon(Icons.calendar_today),
+              InkWell(
                 onTap: () => _selectDate(context),
+                child: InputDecorator(
+                  decoration: const InputDecoration(
+                    border: OutlineInputBorder(),
+                    labelText: 'Date*',
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        '${_selectedDate.day}/${_selectedDate.month}/${_selectedDate.year}',
+                        style: const TextStyle(fontSize: 16),
+                      ),
+                      const Icon(Icons.calendar_today),
+                    ],
+                  ),
+                ),
               ),
               const SizedBox(height: 16),
               TextFormField(
                 controller: _contactInfoController,
                 decoration: const InputDecoration(
+                  border: OutlineInputBorder(),
                   labelText: 'Contact Information*',
                   hintText: 'How can others reach you?',
                 ),
@@ -182,11 +225,16 @@ class _AddItemScreenState extends State<AddItemScreen> {
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton(
-                  onPressed: _submitForm,
+                  onPressed: _isSubmitting ? null : _submitForm,
                   style: ElevatedButton.styleFrom(
                     padding: const EdgeInsets.symmetric(vertical: 16),
                   ),
-                  child: const Text('Submit', style: TextStyle(fontSize: 16)),
+                  child: _isSubmitting
+                      ? const CircularProgressIndicator()
+                      : Text(
+                    'Submit',
+                    style: TextStyle(fontSize: 16),
+                  ),
                 ),
               ),
             ],

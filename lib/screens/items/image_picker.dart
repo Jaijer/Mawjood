@@ -1,20 +1,20 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
-import 'dart:typed_data';
+import 'package:cached_network_image/cached_network_image.dart';
+import '../../services/supabase_service.dart';
 
 class CustomImagePicker extends StatelessWidget {
-  final List<XFile> imageFiles;
-  final List<String> images;
-  final Function(XFile)? onFileSelected;
-  final Function(String)? onImageSelected;
+  final List<File> imageFiles;
+  final List<String> imageUrls;
+  final Function(File) onFileSelected;
   final Function(int) onImageRemoved;
 
   const CustomImagePicker({
     super.key,
     this.imageFiles = const [],
-    this.images = const [],
-    this.onFileSelected,
-    this.onImageSelected,
+    this.imageUrls = const [],
+    required this.onFileSelected,
     required this.onImageRemoved,
   });
 
@@ -33,7 +33,7 @@ class CustomImagePicker extends StatelessWidget {
           style: TextStyle(color: Colors.grey),
         ),
         const SizedBox(height: 12),
-        if (imageFiles.isNotEmpty || images.isNotEmpty)
+        if (imageFiles.isNotEmpty || imageUrls.isNotEmpty)
           GridView.builder(
             shrinkWrap: true,
             physics: const NeverScrollableScrollPhysics(),
@@ -42,7 +42,7 @@ class CustomImagePicker extends StatelessWidget {
               crossAxisSpacing: 8,
               mainAxisSpacing: 8,
             ),
-            itemCount: imageFiles.length + images.length,
+            itemCount: imageFiles.length + imageUrls.length,
             itemBuilder: (context, index) {
               if (index < imageFiles.length) {
                 return _FilePreview(
@@ -52,7 +52,7 @@ class CustomImagePicker extends StatelessWidget {
               } else {
                 final imageIndex = index - imageFiles.length;
                 return _UrlPreview(
-                  imageUrl: images[imageIndex],
+                  imageUrl: imageUrls[imageIndex],
                   onRemove: () => onImageRemoved(index),
                 );
               }
@@ -70,13 +70,7 @@ class CustomImagePicker extends StatelessWidget {
                     imageQuality: 80,
                   );
                   if (image != null) {
-                    if (onFileSelected != null) {
-                      onFileSelected!(image);
-                    } else if (onImageSelected != null) {
-                      // Convert to URL or handle differently if needed
-                      // This is a placeholder for demonstration
-                      onImageSelected!('file://${image.path}');
-                    }
+                    onFileSelected(File(image.path));
                   }
                 },
                 icon: const Icon(Icons.camera_alt),
@@ -93,13 +87,7 @@ class CustomImagePicker extends StatelessWidget {
                     imageQuality: 80,
                   );
                   if (image != null) {
-                    if (onFileSelected != null) {
-                      onFileSelected!(image);
-                    } else if (onImageSelected != null) {
-                      // Convert to URL or handle differently if needed
-                      // This is a placeholder for demonstration
-                      onImageSelected!('file://${image.path}');
-                    }
+                    onFileSelected(File(image.path));
                   }
                 },
                 icon: const Icon(Icons.photo_library),
@@ -114,7 +102,7 @@ class CustomImagePicker extends StatelessWidget {
 }
 
 class _FilePreview extends StatelessWidget {
-  final XFile imageFile;
+  final File imageFile;
   final VoidCallback onRemove;
 
   const _FilePreview({
@@ -126,20 +114,14 @@ class _FilePreview extends StatelessWidget {
   Widget build(BuildContext context) {
     return Stack(
       children: [
-        FutureBuilder<Uint8List>(
-          future: imageFile.readAsBytes(),
-          builder: (context, snapshot) {
-            if (snapshot.hasData) {
-              return ClipRRect(
-                borderRadius: BorderRadius.circular(8),
-                child: Image.memory(
-                  snapshot.data!,
-                  fit: BoxFit.cover,
-                ),
-              );
-            }
-            return const Center(child: CircularProgressIndicator());
-          },
+        ClipRRect(
+          borderRadius: BorderRadius.circular(8),
+          child: Image.file(
+            imageFile,
+            fit: BoxFit.cover,
+            width: double.infinity,
+            height: double.infinity,
+          ),
         ),
         Positioned(
           top: 4,
@@ -180,29 +162,21 @@ class _UrlPreview extends StatelessWidget {
       children: [
         ClipRRect(
           borderRadius: BorderRadius.circular(8),
-          child: Image.network(
-            imageUrl,
+          child: CachedNetworkImage(
+            imageUrl: imageUrl,
             fit: BoxFit.cover,
-            loadingBuilder: (context, child, loadingProgress) {
-              if (loadingProgress == null) return child;
-              return Center(
-                child: CircularProgressIndicator(
-                  value: loadingProgress.expectedTotalBytes != null
-                      ? loadingProgress.cumulativeBytesLoaded /
-                      loadingProgress.expectedTotalBytes!
-                      : null,
-                ),
-              );
-            },
-            errorBuilder: (context, error, stackTrace) {
-              return Container(
-                color: Colors.grey[300],
-                child: const Icon(
-                  Icons.broken_image,
-                  color: Colors.red,
-                ),
-              );
-            },
+            width: double.infinity,
+            height: double.infinity,
+            placeholder: (context, url) => Center(
+              child: CircularProgressIndicator(),
+            ),
+            errorWidget: (context, url, error) => Container(
+              color: Colors.grey[300],
+              child: const Icon(
+                Icons.broken_image,
+                color: Colors.red,
+              ),
+            ),
           ),
         ),
         Positioned(

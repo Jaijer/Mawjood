@@ -1,14 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:mawjood/screens/landing_page/landing_page.dart';
 import 'config/theme.dart';
-import 'config/firebase_config.dart';  // Import the new firebase config
+import 'config/supabase_config.dart';  // Import the new Supabase config
 
 void main() async {
   // Ensure Flutter is initialized
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Initialize Firebase
-  await FirebaseConfig.initializeFirebase();
+  // Initialize Supabase
+  await SupabaseConfig.initializeSupabase();
 
   // Run the app
   runApp(const MyApp());

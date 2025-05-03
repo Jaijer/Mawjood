@@ -1,7 +1,5 @@
 // lib/models/item_model.dart
 
-import 'package:cloud_firestore/cloud_firestore.dart';
-
 enum ItemType { lost, found }
 
 enum ItemStatus { active, resolved }
@@ -71,42 +69,39 @@ class Item {
     );
   }
 
-  // Convert Item to Map for Firestore
+  // Convert Item to Map for Supabase
   Map<String, dynamic> toMap() {
     return {
       'title': title,
       'description': description,
       'category': category,
       'location': location,
-      'date': Timestamp.fromDate(date),
-      'contactInfo': contactInfo,
-      'imageUrls': imageUrls,
-      'type': type.toString(),
-      'status': status.toString(),
-      'userId': userId,
-      'createdAt': Timestamp.fromDate(createdAt),
-      'updatedAt': Timestamp.fromDate(updatedAt),
+      'date': date.toIso8601String(),
+      'contact_info': contactInfo,
+      'image_urls': imageUrls,
+      'status': status == ItemStatus.active ? 'active' : 'resolved',
+      'user_id': userId,
+      'created_at': createdAt.toIso8601String(),
+      'updated_at': updatedAt.toIso8601String(),
     };
   }
 
-  // Create Item from Firestore document
-  factory Item.fromMap(Map<String, dynamic> map, String docId) {
+  // Create Item from Supabase data
+  factory Item.fromMap(Map<String, dynamic> map, ItemType type) {
     return Item(
-      id: docId,
+      id: map['id'],
       title: map['title'] ?? '',
       description: map['description'] ?? '',
       category: map['category'] ?? '',
       location: map['location'] ?? '',
-      date: (map['date'] as Timestamp).toDate(),
-      contactInfo: map['contactInfo'] ?? '',
-      imageUrls: List<String>.from(map['imageUrls'] ?? []),
-      type: map['type'] == ItemType.lost.toString() ? ItemType.lost : ItemType.found,
-      status: map['status'] == ItemStatus.resolved.toString()
-          ? ItemStatus.resolved
-          : ItemStatus.active,
-      userId: map['userId'] ?? '',
-      createdAt: (map['createdAt'] as Timestamp).toDate(),
-      updatedAt: (map['updatedAt'] as Timestamp).toDate(),
+      date: DateTime.parse(map['date']),
+      contactInfo: map['contact_info'] ?? '',
+      imageUrls: List<String>.from(map['image_urls'] ?? []),
+      type: type,
+      status: map['status'] == 'resolved' ? ItemStatus.resolved : ItemStatus.active,
+      userId: map['user_id'] ?? '',
+      createdAt: DateTime.parse(map['created_at']),
+      updatedAt: DateTime.parse(map['updated_at']),
     );
   }
 }

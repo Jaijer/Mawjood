@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../models/item_model.dart';
 import '../../utils/form_validators.dart';
 import './image_picker.dart';
+import '../../services/supabase_service.dart';
 
 class EditItemScreen extends StatefulWidget {
   final Item item;
@@ -17,6 +18,8 @@ class EditItemScreen extends StatefulWidget {
 
 class _EditItemScreenState extends State<EditItemScreen> {
   final _formKey = GlobalKey<FormState>();
+  final _firestoreService = FirestoreService();
+  bool _isLoading = false;
 
   // Form fields
   late TextEditingController _titleController;
@@ -26,6 +29,7 @@ class _EditItemScreenState extends State<EditItemScreen> {
   late DateTime _selectedDate;
   late TextEditingController _contactInfoController;
   late List<String> _imageUrls;
+  late ItemStatus _status;
 
   // Predefined categories for lost and found items
   final List<String> _lostCategories = [
@@ -50,6 +54,7 @@ class _EditItemScreenState extends State<EditItemScreen> {
     _selectedDate = widget.item.date;
     _contactInfoController = TextEditingController(text: widget.item.contactInfo);
     _imageUrls = List.from(widget.item.imageUrls);
+    _status = widget.item.status;
   }
 
   @override
@@ -96,34 +101,47 @@ class _EditItemScreenState extends State<EditItemScreen> {
         return;
       }
 
-      // Create updated item
-      final updatedItem = widget.item.copyWith(
-        title: _titleController.text,
-        description: _descriptionController.text,
-        category: _selectedCategory,
-        location: _locationController.text,
-        date: _selectedDate,
-        contactInfo: _contactInfoController.text,
-        imageUrls: _imageUrls,
-      );
+      setState(() {
+        _isLoading = true;
+      });
 
-      // Print the updated item data to console for debugging
-      print('Updating item:');
-      print('Title: ${updatedItem.title}');
-      print('Description: ${updatedItem.description}');
-      print('Category: ${updatedItem.category}');
-      print('Location: ${updatedItem.location}');
-      print('Date: ${updatedItem.date}');
-      print('Contact Info: ${updatedItem.contactInfo}');
-      print('Images: ${updatedItem.imageUrls}');
+      try {
+        // Create updated item
+        final updatedItem = widget.item.copyWith(
+          title: _titleController.text,
+          description: _descriptionController.text,
+          category: _selectedCategory,
+          location: _locationController.text,
+          date: _selectedDate,
+          contactInfo: _contactInfoController.text,
+          imageUrls: _imageUrls,
+          status: _status,
+        );
 
-      // Show success message
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Item updated successfully')),
-      );
+        // Update the item in Firestore
+        await _firestoreService.updateItem(updatedItem);
 
-      // Navigate back to the previous screen
-      Navigator.pop(context);
+        // Show success message
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Item updated successfully')),
+          );
+          Navigator.pop(context, true); // Return true to indicate success
+        }
+      } catch (e) {
+        // Show error message
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Error updating item: $e')),
+          );
+        }
+      } finally {
+        if (mounted) {
+          setState(() {
+            _isLoading = false;
+          });
+        }
+      }
     }
   }
 
@@ -133,7 +151,9 @@ class _EditItemScreenState extends State<EditItemScreen> {
       appBar: AppBar(
         title: Text(widget.item.type == ItemType.lost ? 'Edit Lost Item' : 'Edit Found Item'),
       ),
-      body: SingleChildScrollView(
+      body: _isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : SingleChildScrollView(
         padding: const EdgeInsets.all(16),
         child: Form(
           key: _formKey,
@@ -185,9 +205,11 @@ class _EditItemScreenState extends State<EditItemScreen> {
                   );
                 }).toList(),
                 onChanged: (String? newValue) {
-                  setState(() {
-                    _selectedCategory = newValue!;
-                  });
+                  if (newValue != null) {
+                    setState(() {
+                      _selectedCategory = newValue;
+                    });
+                  }
                 },
                 validator: FormValidators.validateCategory,
               ),
@@ -228,16 +250,15 @@ class _EditItemScreenState extends State<EditItemScreen> {
               ),
               const SizedBox(height: 24),
 
-              // Status toggle (only for edit screen)
+              // Status toggle
               SwitchListTile(
                 title: const Text('Mark as Resolved'),
                 subtitle: const Text('Toggle if the item has been returned'),
-                value: widget.item.status == ItemStatus.resolved,
+                value: _status == ItemStatus.resolved,
                 onChanged: (bool value) {
-                  // This will be implemented when you integrate with Supabase
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Status update functionality will be implemented later')),
-                  );
+                  setState(() {
+                    _status = value ? ItemStatus.resolved : ItemStatus.active;
+                  });
                 },
               ),
               const SizedBox(height: 24),
@@ -246,11 +267,13 @@ class _EditItemScreenState extends State<EditItemScreen> {
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton(
-                  onPressed: _updateItem,
+                  onPressed: _isLoading ? null : _updateItem,
                   style: ElevatedButton.styleFrom(
                     padding: const EdgeInsets.symmetric(vertical: 16),
                   ),
-                  child: const Text('Update', style: TextStyle(fontSize: 16)),
+                  child: _isLoading
+                      ? const CircularProgressIndicator()
+                      : const Text('Update', style: TextStyle(fontSize: 16)),
                 ),
               ),
             ],
