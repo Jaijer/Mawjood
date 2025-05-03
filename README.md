@@ -1,16 +1,36 @@
-# mawjood
+# Mawjood - KFUPM Lost and Found Application
+A Flutter application for managing lost and found items at KFUPM.
+## Github: https://github.com/Jaijer/Mawjood#
+## How to Run the Project
 
-KFUPM Lost and Found Application
+### Prerequisites
 
-## Getting Started
+Before running the project, make sure you have:
 
-This project is a starting point for a Flutter application.
+- [Flutter SDK](https://flutter.dev/docs/get-started/install) installed
+- An IDE (Android Studio, VS Code, etc.)
+- A connected device or emulator
 
-A few resources to get you started if this is your first Flutter project:
+### Running the Application
 
-- [Lab: Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Cookbook: Useful Flutter samples](https://docs.flutter.dev/cookbook)
+1. Clone the repository from GitHub:
+```bash
+git clone https://github.com/Jaijer/Mawjood.git
+cd mawjood
+```
 
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+2. Install dependencies:
+```bash
+flutter pub get
+```
+
+3. Run the application:
+```bash
+flutter run
+```
+
+This will launch the app on your connected device or emulator.
+
+## Project Description
+
+Mawjood is a lost and found application designed for the KFUPM community. The app allows users to report lost items and post found items to help connect items with their owners.
